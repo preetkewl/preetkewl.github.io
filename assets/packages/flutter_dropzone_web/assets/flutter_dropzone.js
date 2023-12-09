@@ -1,9 +1,10 @@
 if (typeof FlutterDropzone === 'undefined') {
 class FlutterDropzone {
-  constructor(container, onLoaded, onError, onHover, onDrop, onDropMultiple, onLeave) {
+  constructor(container, onLoaded, onError, onHover, onDrop, onDropInvalid, onDropMultiple, onLeave) {
     this.onError = onError;
     this.onHover = onHover;
     this.onDrop = onDrop;
+    this.onDropInvalid = onDropInvalid;
     this.onDropMultiple = onDropMultiple;
     this.onLeave = onLeave;
     this.dropMIME = null;
@@ -16,11 +17,12 @@ class FlutterDropzone {
     if (onLoaded != null) onLoaded();
   }
 
-  updateHandlers(onLoaded, onError, onHover, onDrop, onDropMultiple, onLeave) {
+  updateHandlers(onLoaded, onError, onHover, onDrop, onDropInvalid, onDropMultiple, onLeave) {
     this.onError = onError;
     this.onHover = onHover;
     this.onDrop = onDrop;
     this.onDropMultiple = onDropMultiple;
+    this.onDropInvalid = onDropInvalid;
     this.onLeave = onLeave;
     this.dropMIME = null;
     this.dropOperation = 'copy';
@@ -37,7 +39,7 @@ class FlutterDropzone {
     if (this.onLeave != null) this.onLeave(event);
   }
 
-  drop_handler(event) {
+  async drop_handler(event) {
     event.preventDefault();
 
     var files = [];
@@ -52,14 +54,16 @@ class FlutterDropzone {
               if (this.onDrop != null) this.onDrop(event, file);
               files.push(file);
             }
+            else {
+              if (this.onDropInvalid != null) this.onDropInvalid(event, item.type);
+            }
             break;
 
           case "string":
             const that = this;
-            item.getAsString(function (text) {
-              if (that.onDrop != null) that.onDrop(event, text);
-              strings.push(text);
-            });
+            var text = await this.#getItemAsString(item);
+            if (that.onDrop != null) that.onDrop(event, text);
+            strings.push(text);
             break;
 
           default:
@@ -78,6 +82,14 @@ class FlutterDropzone {
       if (files.length > 0) this.onDropMultiple(event, files);
       if (strings.length > 0) this.onDropMultiple(event, strings);
     }
+  }
+
+  #getItemAsString(item) {
+    return new Promise((resolve, reject) => {
+      item.getAsString(function (text) {
+        resolve(text);
+      });
+    })
   }
 
   setMIME(mime) {
@@ -105,11 +117,11 @@ var flutter_dropzone_web = {
     return true;
   },
 
-  create: function(container, onLoaded, onError, onHover, onDrop, onDropMultiple, onLeave) {
+  create: function(container, onLoaded, onError, onHover, onDrop, onDropInvalid, onDropMultiple, onLeave) {
     if (container.FlutterDropzone === undefined)
-      container.FlutterDropzone = new FlutterDropzone(container, onLoaded, onError, onHover, onDrop, onDropMultiple, onLeave);
+      container.FlutterDropzone = new FlutterDropzone(container, onLoaded, onError, onHover, onDrop, onDropInvalid, onDropMultiple, onLeave);
     else
-      container.FlutterDropzone.updateHandlers(onLoaded, onError, onHover, onDrop, onDropMultiple, onLeave);
+      container.FlutterDropzone.updateHandlers(onLoaded, onError, onHover, onDrop, onDropInvalid, onDropMultiple, onLeave);
   },
 };
 
